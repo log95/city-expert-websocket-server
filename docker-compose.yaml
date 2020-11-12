@@ -1,0 +1,19 @@
+version: "3.5"
+
+services:
+
+  websocket-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /var/www
+    container_name: city-expert-websocket-server
+    networks:
+      - websocket-proxy-net
+    volumes:
+      - ./:/var/www
+
+networks:
+  websocket-proxy-net:
+    external:
+      name: city-expert

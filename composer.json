@@ -1,0 +1,12 @@
+{
+    "name": "log95/city-expert-websocket-server",
+    "description": "City expert websocket server",
+    "type": "project",
+    "require": {
+        "firebase/php-jwt": "^5.2",
+        "php": "^7.4",
+        "ext-json": "*",
+        "cboden/ratchet": "^0.4.3",
+        "react/zmq": "^0.4.0"
+    }
+}
