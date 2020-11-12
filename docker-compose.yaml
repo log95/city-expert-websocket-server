@@ -8,6 +8,9 @@ services:
       dockerfile: Dockerfile
     working_dir: /var/www
     container_name: city-expert-websocket-server
+    expose:
+      # TODO: expose нужен?
+      - "5555"
     networks:
       - websocket-proxy-net
     volumes:
