@@ -2,37 +2,66 @@
 
 namespace App;
 
+use Firebase\JWT\JWT;
 use Ratchet\ConnectionInterface;
-use Ratchet\Wamp\WampServerInterface;
+use Ratchet\MessageComponentInterface;
+use React\ZMQ\SocketWrapper;
 
-class MessageServer implements WampServerInterface {
+class MessageServer implements MessageComponentInterface
+{
+    private array $userToConnectionMap = [];
 
-    protected $subscribedTopics = array();
+    public function onOpen(ConnectionInterface $conn)
+    {
+        $queryString = $conn->httpRequest->getUri()->getQuery();
 
-    /**
-     * @param ConnectionInterface $conn
-     * @param \Ratchet\Wamp\Topic|string $topic. Когда в js-е подписваемся на какой-то канал, здесь это называется
-     *      топик. А строка указанная в js-е это id топика.
-     *      Также данный объект хранит в себе всех (subscribers), кто подписался на него (топик).
-     */
-    public function onSubscribe(ConnectionInterface $conn, $topic) {
-        $this->subscribedTopics[$topic->getId()] = $topic;
+        parse_str($queryString, $queryParams);
+
+        if (!$queryParams['token']) {
+            throw new \RuntimeException('No auth token provided.');
+        }
+
+        $payload = (array) JWT::decode($queryParams['token'], $_SERVER['JWT_PUBLIC_KEY'], ['RS256']);
+
+        var_dump($payload);
+
+        if ($payload['id']) {
+            throw new \RuntimeException('User id is not defined.');
+        }
+
+        $userId = $payload['id'];
+
+        // TODO: массив коннекшенов.
+        $this->userToConnectionMap[$userId] = $conn;
+
+        echo "New connection! ({$conn->resourceId})\n";
     }
-    public function onUnSubscribe(ConnectionInterface $conn, $topic) {
+
+    // TODO: удалить интерфейс?
+    public function onMessage(ConnectionInterface $from, $msg) {
+        $numRecv = count($this->users) - 1;
+        echo sprintf('Connection %d sending message "%s" to %d other connection%s' . "\n"
+            , $from->resourceId, $msg, $numRecv, $numRecv == 1 ? '' : 's');
+
+        foreach ($this->users as $client) {
+            if ($from !== $client) {
+                // The sender is not the receiver, send to each client connected
+                $client->send($msg);
+            }
+        }
     }
-    public function onOpen(ConnectionInterface $conn) {
-    }
+
     public function onClose(ConnectionInterface $conn) {
+        // The connection is closed, remove it, as we can no longer send it messages
+        //$this->users->detach($conn);
+
+        echo "Connection {$conn->resourceId} has disconnected\n";
     }
-    public function onCall(ConnectionInterface $conn, $id, $topic, array $params) {
-        // In this application if clients send data it's because the user hacked around in console
-        $conn->callError($id, $topic, 'You are not allowed to make calls')->close();
-    }
-    public function onPublish(ConnectionInterface $conn, $topic, $event, array $exclude, array $eligible) {
-        // In this application if clients send data it's because the user hacked around in console
-        $conn->close();
-    }
+
     public function onError(ConnectionInterface $conn, \Exception $e) {
+        echo "An error has occurred: {$e->getMessage()}\n";
+
+        $conn->close();
     }
 
 
@@ -40,10 +69,12 @@ class MessageServer implements WampServerInterface {
      * Смысл, что функция находится в этом файле, чтобы у нас был доступ к $subscribedTopics.
      * @param $post
      */
-    public function onBlogEntry($post) {
-        print_r($post);
+    public function onBlogEntry($post, SocketWrapper $socket) {
+        $socket->send('TRUE 22');
+
+        /*print_r($post);
         ob_flush();
-        flush();
+        flush();*/
         return;
 
         $postData = json_decode($post, true);
