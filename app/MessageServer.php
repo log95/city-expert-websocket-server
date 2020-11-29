@@ -9,7 +9,7 @@ use React\ZMQ\SocketWrapper;
 
 class MessageServer implements MessageComponentInterface
 {
-    private array $userToConnectionMap = [];
+    private array $userConnections = [];
 
     public function onOpen(ConnectionInterface $conn)
     {
@@ -23,16 +23,19 @@ class MessageServer implements MessageComponentInterface
 
         $payload = (array) JWT::decode($queryParams['token'], $_SERVER['JWT_PUBLIC_KEY'], ['RS256']);
 
-        var_dump($payload);
-
-        if ($payload['id']) {
+        if (!$payload['id']) {
             throw new \RuntimeException('User id is not defined.');
         }
 
         $userId = $payload['id'];
 
-        // TODO: массив коннекшенов.
-        $this->userToConnectionMap[$userId] = $conn;
+        if (!isset($this->userConnections[$userId])) {
+            $this->userConnections[$userId] = [];
+        }
+
+        $this->userConnections[$userId][] = $conn;
+
+        $conn->userId = $userId;
 
         echo "New connection! ({$conn->resourceId})\n";
     }
@@ -51,42 +54,67 @@ class MessageServer implements MessageComponentInterface
         }
     }
 
-    public function onClose(ConnectionInterface $conn) {
-        // The connection is closed, remove it, as we can no longer send it messages
-        //$this->users->detach($conn);
+    public function onClose(ConnectionInterface $conn)
+    {
+        if ($conn->userId) {
+            $keyConn = array_search($conn, $this->userConnections[$conn->userId], true);
+
+            if ($keyConn !== false) {
+                unset($this->userConnections[$conn->userId][$keyConn]);
+            }
+        }
 
         echo "Connection {$conn->resourceId} has disconnected\n";
     }
 
-    public function onError(ConnectionInterface $conn, \Exception $e) {
-        echo "An error has occurred: {$e->getMessage()}\n";
+    public function onError(ConnectionInterface $conn, \Exception $e)
+    {
+        echo "Error: {$e->getMessage()}\n";
 
         $conn->close();
     }
 
 
-    /**
-     * Смысл, что функция находится в этом файле, чтобы у нас был доступ к $subscribedTopics.
-     * @param $post
-     */
-    public function onBlogEntry($post, SocketWrapper $socket) {
-        $socket->send('TRUE 22');
+    public function handleMessageFromSocket(string $message, SocketWrapper $socket): void
+    {
+        $messageDecoded = json_decode($message, true);
 
-        /*print_r($post);
-        ob_flush();
-        flush();*/
-        return;
+        if (!$messageDecoded['USER_ID']) {
+            $socket->send(json_encode([
+                'TYPE' => 'ERROR',
+                'MESSAGE' => 'User is not set.',
+            ]));
 
-        $postData = json_decode($post, true);
-
-        // If the lookup topic object isn't set there is no one to publish to
-        if (!array_key_exists($postData['category'], $this->subscribedTopics)) {
             return;
         }
 
-        $topic = $this->subscribedTopics[$postData['category']];
+        if (!$this->isUserOnline($messageDecoded['USER_ID'])) {
+            $socket->send(json_encode([
+                'TYPE' => 'USER_IS_OFFLINE',
+                'MESSAGE' => 'Couldn\'t send message because user is offline.',
+            ]));
 
-        // re-send the data to all the clients subscribed to that category
-        $topic->broadcast($postData);
+            return;
+        }
+
+        $this->sendMessageToUser($messageDecoded['USER_ID'], $message);
+
+        $socket->send(json_encode([
+            'TYPE' => 'SUCCESS',
+            'MESSAGE' => 'Message is sended.',
+        ]));
+    }
+
+    private function sendMessageToUser(int $userId, string $message): void
+    {
+        /** @var ConnectionInterface $conn */
+        foreach ($this->userConnections[$userId] as $conn) {
+            $conn->send($message);
+        }
+    }
+
+    private function isUserOnline(int $userId): bool
+    {
+        return array_key_exists($userId, $this->userConnections);
     }
 }

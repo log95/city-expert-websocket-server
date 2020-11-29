@@ -21,7 +21,7 @@ $pull->bind('tcp://0.0.0.0:5555'); // Binding to 127.0.0.1 means the only client
 //$pull->bind('tcp://127.0.0.1:5555'); // Binding to 127.0.0.1 means the only client that can connect is itself
 // Точка входа для всех пришедших событий с бекенда.
 $pull->on('message', function ($message) use ($pusher, $pull) {
-    $pusher->onBlogEntry($message, $pull);
+    $pusher->handleMessageFromSocket($message, $pull);
 });
 
 // Set up our WebSocket server for clients wanting real-time updates
