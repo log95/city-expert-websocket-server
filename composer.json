@@ -8,7 +8,8 @@
         "ext-json": "*",
         "cboden/ratchet": "^0.4.3",
         "react/zmq": "^0.4.0",
-        "vlucas/phpdotenv": "^5.2"
+        "vlucas/phpdotenv": "^5.2",
+        "ext-zmq": "*"
     },
     "autoload": {
         "psr-4": {

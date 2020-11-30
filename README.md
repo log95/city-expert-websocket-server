@@ -1,0 +1,1 @@
+- set env like in symfony

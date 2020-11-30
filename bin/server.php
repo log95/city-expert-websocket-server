@@ -2,37 +2,39 @@
 
 use App\MessageServer;
 use Dotenv\Dotenv;
+use React\EventLoop\Factory;
+use React\Socket\Server as SocketServer;
+use React\ZMQ\Context as ZMQContext;
+use Ratchet\Server\IoServer;
+use Ratchet\Http\HttpServer;
+use Ratchet\WebSocket\WsServer;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 $dotenv = Dotenv::createImmutable(dirname(__DIR__));
 $dotenv->load();
 
-$loop   = React\EventLoop\Factory::create();
-$pusher = new MessageServer();
+$loop = Factory::create();
+$messageServer = new MessageServer();
 
-// Listen for the web server to make a ZeroMQ push after an ajax request
-$context = new React\ZMQ\Context($loop);
-//$pull = $context->getSocket(ZMQ::SOCKET_PULL);
-$pull = $context->getSocket(ZMQ::SOCKET_REP);
-// TOOD: учитывать, что много инстансов symfony
-// TODO: 0.0.0.0 должно быть?
-$pull->bind('tcp://0.0.0.0:5555'); // Binding to 127.0.0.1 means the only client that can connect is itself
-//$pull->bind('tcp://127.0.0.1:5555'); // Binding to 127.0.0.1 means the only client that can connect is itself
-// Точка входа для всех пришедших событий с бекенда.
-$pull->on('message', function ($message) use ($pusher, $pull) {
-    $pusher->handleMessageFromSocket($message, $pull);
+// Listen messages from backend on this socket.
+$context = new ZMQContext($loop);
+$socket = $context->getSocket(ZMQ::SOCKET_REP);
+// Binding to 0.0.0.0 means remotes can connect.
+$socket->bind(sprintf('tcp://0.0.0.0:%s', $_SERVER['SOCKET_FOR_BACKEND_PORT']));
+$socket->on('message', function ($message) use ($messageServer, $socket) {
+    $messageServer->handleMessageFromSocket($message, $socket);
 });
 
-// Set up our WebSocket server for clients wanting real-time updates
-$webSock = new React\Socket\Server('0.0.0.0:8087', $loop); // Binding to 0.0.0.0 means remotes can connect
-$webServer = new Ratchet\Server\IoServer(
-    new Ratchet\Http\HttpServer(
-        new Ratchet\WebSocket\WsServer(
-            $pusher
+// WebSocket server for end users.
+$webSock = new SocketServer(sprintf('0.0.0.0:%s', $_SERVER['WS_SERVER_PORT']), $loop);
+
+$webServer = new IoServer(
+    new HttpServer(
+        new WsServer(
+            $messageServer
         )
     ),
     $webSock
 );
-
 $loop->run();

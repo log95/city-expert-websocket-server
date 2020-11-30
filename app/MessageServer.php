@@ -37,21 +37,7 @@ class MessageServer implements MessageComponentInterface
 
         $conn->userId = $userId;
 
-        echo "New connection! ({$conn->resourceId})\n";
-    }
-
-    // TODO: удалить интерфейс?
-    public function onMessage(ConnectionInterface $from, $msg) {
-        $numRecv = count($this->users) - 1;
-        echo sprintf('Connection %d sending message "%s" to %d other connection%s' . "\n"
-            , $from->resourceId, $msg, $numRecv, $numRecv == 1 ? '' : 's');
-
-        foreach ($this->users as $client) {
-            if ($from !== $client) {
-                // The sender is not the receiver, send to each client connected
-                $client->send($msg);
-            }
-        }
+        echo "New connection. ({$conn->resourceId})\n";
     }
 
     public function onClose(ConnectionInterface $conn)
@@ -74,6 +60,10 @@ class MessageServer implements MessageComponentInterface
         $conn->close();
     }
 
+    public function onMessage(ConnectionInterface $from, $msg)
+    {
+
+    }
 
     public function handleMessageFromSocket(string $message, SocketWrapper $socket): void
     {
