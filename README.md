@@ -11,5 +11,5 @@ Serve only authorized users with [JWT](https://en.wikipedia.org/wiki/JSON_Web_To
 
 ### Start app
 - Need `docker`, `docker-compose` installed
-- `git pull https://github.com/log95/city-expert-websocket-server`
-- `./local-env.sh up`
+- Clone repository. `git clone https://github.com/log95/city-expert-websocket-server.git`
+- Up environment. `./local-env.sh up`
