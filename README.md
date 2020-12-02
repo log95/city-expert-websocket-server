@@ -1,4 +1,15 @@
-- set env like in symfony
+# City expert websocket server
 
-testing via thor (https://github.com/observing/thor)
-thor --amount 5000 ws://localhost:8087/?token=XXX
+### About
+WS server for [city-expert-backend](https://github.com/log95/city-expert-backend) and 
+[city-expert-frontend](https://github.com/log95/city-expert-frontend).
+
+Based on [Ratchet](http://socketo.me/) as ws server and 
+[ZeroMQ](https://zeromq.org/) as library for messages from backend app.
+
+Serve only authorized users with [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token).
+
+### Start app
+- Need `docker`, `docker-compose` installed
+- `git pull https://github.com/log95/city-expert-websocket-server`
+- `./local-env.sh up`

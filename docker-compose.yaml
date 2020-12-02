@@ -8,6 +8,7 @@ services:
       dockerfile: Dockerfile
     working_dir: /var/www
     container_name: city-expert-websocket-server
+    restart: always
     expose:
       - "5555"
     ports:
