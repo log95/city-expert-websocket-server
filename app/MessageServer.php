@@ -17,13 +17,13 @@ class MessageServer implements MessageComponentInterface
 
         parse_str($queryString, $queryParams);
 
-        if (!$queryParams['token']) {
+        if (!isset($queryParams['token'])) {
             throw new \RuntimeException('No auth token provided.');
         }
 
         $payload = (array) JWT::decode($queryParams['token'], $_SERVER['JWT_PUBLIC_KEY'], ['RS256']);
 
-        if (!$payload['id']) {
+        if (!isset($payload['id'])) {
             throw new \RuntimeException('User id is not defined.');
         }
 
@@ -42,7 +42,7 @@ class MessageServer implements MessageComponentInterface
 
     public function onClose(ConnectionInterface $conn)
     {
-        if ($conn->userId) {
+        if (isset($conn->userId)) {
             $keyConn = array_search($conn, $this->userConnections[$conn->userId], true);
 
             if ($keyConn !== false) {
