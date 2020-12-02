@@ -31,4 +31,4 @@ COPY --chown=www:www . /var/www
 
 USER www
 
-CMD bash -c "composer install --prefer-source --no-interaction && php ./bin/server.php"
+CMD bash -c "composer install && php ./bin/server.php"
